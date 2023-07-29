@@ -74,6 +74,9 @@ fn main() -> Result<()> {
     let headers = reader.headers().map_err(CantParseHeaders)?;
     println!("Headers: {:#?}", headers);
 
+    let lines = args.lines.unwrap_or(usize::MAX);
+
+    for record in reader.records().take(lines) {
         let record = record.map_err(CantParseRecord)?;
         println!("{:#?}", record);
     }
