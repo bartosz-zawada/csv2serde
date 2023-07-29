@@ -1,11 +1,28 @@
 use clap::{builder::ArgPredicate, Parser};
-use std::path::PathBuf;
-use thiserror::Error;
+use csv;
+use std::{
+    char::{ParseCharError, TryFromCharError},
+    path::PathBuf,
+};
+use thiserror;
 
-#[derive(Error, Debug)]
-enum C2SError {}
+#[derive(thiserror::Error, Debug)]
+enum Error {
+    #[error("Could not create Reader for path {1}")]
+    CantOpenReader(#[source] csv::Error, String),
 
-type C2SResult<T> = Result<T, C2SError>;
+    #[error("Could not parse delimiter")]
+    CantParseDelimiter(#[source] ParseCharError),
+
+    #[error("Could not cast delimiter to u8: {0}")]
+    CantCastDelimiter(#[source] TryFromCharError),
+
+    #[error("Could not parse record: {0}")]
+    CantParseRecord(#[source] csv::Error),
+}
+use Error::*;
+
+type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
@@ -26,8 +43,8 @@ pub struct Args {
     force: bool,
 
     /// Character or string used as delimiter.
-    #[arg(short = 'd', long, default_value = ",")]
-    delimiter: String,
+    #[arg(short = 'd', long, default_value_t = b',', value_parser = parse_delimiter)]
+    delimiter: u8,
 
     /// Number of rows to analyze for field type prediction.
     /// A value of 0 means the entire file will be read and analyzed.
@@ -35,7 +52,26 @@ pub struct Args {
     lines: Option<usize>,
 }
 
-fn main() -> C2SResult<()> {
-    let _args = Args::parse();
+fn parse_delimiter(arg: &str) -> Result<u8> {
+    let c: char = arg.parse().map_err(CantParseDelimiter)?;
+    Ok(TryInto::<u8>::try_into(c).map_err(CantCastDelimiter)?)
+}
+
+fn main() -> Result<()> {
+    let args = Args::parse();
+
+    let path = args.file;
+    let path_str = path.to_string_lossy().to_string();
+
+    let mut reader = csv::ReaderBuilder::new()
+        .delimiter(args.delimiter)
+        .from_path(path)
+        .map_err(|e| CantOpenReader(e, path_str))?;
+
+    for record in reader.records() {
+        let record = record.map_err(CantParseRecord)?;
+        println!("{:?}", record);
+    }
+
     Ok(())
 }
