@@ -17,6 +17,9 @@ enum Error {
     #[error("Could not cast delimiter to u8: {0}")]
     CantCastDelimiter(#[source] TryFromCharError),
 
+    #[error("Could not parse headers: {0}")]
+    CantParseHeaders(#[source] csv::Error),
+
     #[error("Could not parse record: {0}")]
     CantParseRecord(#[source] csv::Error),
 }
@@ -68,9 +71,11 @@ fn main() -> Result<()> {
         .from_path(path)
         .map_err(|e| CantOpenReader(e, path_str))?;
 
-    for record in reader.records() {
+    let headers = reader.headers().map_err(CantParseHeaders)?;
+    println!("Headers: {:#?}", headers);
+
         let record = record.map_err(CantParseRecord)?;
-        println!("{:?}", record);
+        println!("{:#?}", record);
     }
 
     Ok(())
