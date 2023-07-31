@@ -1,4 +1,5 @@
 use clap::{builder::ArgPredicate, Parser};
+use convert_case::{self, Case, Casing};
 use csv;
 use std::{
     char::{ParseCharError, TryFromCharError},
@@ -127,10 +128,10 @@ struct Header {
 }
 
 impl From<&str> for Header {
-    fn from(name: &str) -> Self {
+    fn from(field: &str) -> Self {
         Header {
-            name: name.to_string(),
-            raw_name: name.to_string(),
+            name: field.to_case(Case::Snake),
+            raw_name: field.to_string(),
             valid_parsers: TypeParser::get_all(),
             optional: false,
             is_empty: true,
