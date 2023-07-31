@@ -1,8 +1,9 @@
 use clap::{builder::ArgPredicate, Parser};
 use convert_case::{self, Case, Casing};
-use csv;
+use csv::{self, Trim};
 use std::{
     char::{ParseCharError, TryFromCharError},
+    fmt::Write,
     path::PathBuf,
 };
 use thiserror;
@@ -23,6 +24,9 @@ enum Error {
 
     #[error("Could not parse record: {0}")]
     CantParseRecord(#[source] csv::Error),
+
+    #[error("Could not generate code: {0}")]
+    CantGenerateCode(#[source] std::fmt::Error),
 }
 use Error::*;
 
@@ -51,8 +55,7 @@ pub struct Args {
     delimiter: u8,
 
     /// Number of rows to analyze for field type prediction.
-    /// A value of 0 means the entire file will be read and analyzed.
-    #[arg(short = 'l', long, default_value = "0")]
+    #[arg(short = 'l', long)]
     lines: Option<usize>,
 }
 
@@ -61,7 +64,7 @@ fn parse_delimiter(arg: &str) -> Result<u8> {
     Ok(TryInto::<u8>::try_into(c).map_err(CantCastDelimiter)?)
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum TypeParser {
     I8,
     I16,
@@ -81,20 +84,38 @@ enum TypeParser {
 impl TypeParser {
     fn get_all() -> Vec<Self> {
         vec![
-            TypeParser::I8,
-            TypeParser::I16,
-            TypeParser::I32,
-            TypeParser::I64,
-            TypeParser::I128,
             TypeParser::U8,
             TypeParser::U16,
             TypeParser::U32,
             TypeParser::U64,
             TypeParser::U128,
+            TypeParser::I8,
+            TypeParser::I16,
+            TypeParser::I32,
+            TypeParser::I64,
+            TypeParser::I128,
             TypeParser::F32,
             TypeParser::F64,
             TypeParser::String,
         ]
+    }
+
+    fn get_type_name(&self) -> &str {
+        match &self {
+            TypeParser::U8 => "u8",
+            TypeParser::U16 => "u16",
+            TypeParser::U32 => "u32",
+            TypeParser::U64 => "u64",
+            TypeParser::U128 => "u128",
+            TypeParser::I8 => "i8",
+            TypeParser::I16 => "i16",
+            TypeParser::I32 => "i32",
+            TypeParser::I64 => "i64",
+            TypeParser::I128 => "i128",
+            TypeParser::F32 => "f32",
+            TypeParser::F64 => "f64",
+            TypeParser::String => "String",
+        }
     }
 
     fn can_parse(&self, field: &str) -> bool {
@@ -148,6 +169,62 @@ impl Header {
             self.is_empty = false;
         }
     }
+
+    fn get_type_name(&self) -> String {
+        if self.is_empty {
+            return "()".to_owned();
+        }
+
+        let all_parsers = TypeParser::get_all();
+
+        let type_name = all_parsers
+            .iter()
+            .find(|p| self.valid_parsers.contains(p))
+            .map(|p| p.get_type_name())
+            .unwrap_or("String");
+
+        if self.optional {
+            format!("Option({})", type_name)
+        } else {
+            type_name.to_owned()
+        }
+    }
+}
+
+fn generate_code_impl(
+    code: &mut String,
+    struct_name: &str,
+    headers: Vec<Header>,
+) -> std::fmt::Result {
+    writeln!(code, "#[derive(Debug, Deserialize)]")?;
+    writeln!(code, "struct {} {{", struct_name)?;
+
+    let mut first_written = false;
+    for h in headers {
+        if first_written {
+            writeln!(code)?;
+        }
+
+        if h.name != h.raw_name {
+            writeln!(code, "    #[serde(rename = \"{}\")]", h.raw_name)?;
+        }
+
+        writeln!(code, "    {}: {},", h.name, h.get_type_name())?;
+
+        first_written = true;
+    }
+
+    writeln!(code, "}}")?;
+
+    Ok(())
+}
+
+fn generate_code(struct_name: &str, headers: Vec<Header>) -> Result<String> {
+    let mut code = String::new();
+
+    generate_code_impl(&mut code, struct_name, headers).map_err(CantGenerateCode)?;
+
+    Ok(code)
 }
 
 fn main() -> Result<()> {
@@ -158,7 +235,8 @@ fn main() -> Result<()> {
 
     let mut reader = csv::ReaderBuilder::new()
         .delimiter(args.delimiter)
-        .from_path(path)
+        .trim(Trim::All)
+        .from_path(&path)
         .map_err(|e| CantOpenReader(e, path_str))?;
 
     let mut headers: Vec<Header> = reader
@@ -178,10 +256,14 @@ fn main() -> Result<()> {
         }
     }
 
-    println!("Processed Headers:");
-    for h in headers {
-        println!("{:#?}", h);
-    }
+    let struct_name = args
+        .name
+        .unwrap_or_else(|| path.file_stem().unwrap().to_string_lossy().to_string())
+        .to_case(Case::Pascal);
+
+    let code = generate_code(&struct_name, headers)?;
+
+    println!("{}", code);
 
     Ok(())
 }
