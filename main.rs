@@ -59,6 +59,63 @@ pub struct Args {
     lines: Option<usize>,
 }
 
+const RESERVED_KEYWORDS: &[&str] = &[
+    "'static",
+    "abstract",
+    "as",
+    "async",
+    "await",
+    "become",
+    "box",
+    "break",
+    "const",
+    "continue",
+    "crate",
+    "do",
+    "dyn",
+    "else",
+    "enum",
+    "extern",
+    "false",
+    "final",
+    "fn",
+    "for",
+    "if",
+    "impl",
+    "in",
+    "let",
+    "loop",
+    "macro",
+    "macro_rules",
+    "match",
+    "mod",
+    "move",
+    "mut",
+    "override",
+    "priv",
+    "pub",
+    "ref",
+    "return",
+    "self",
+    "Self",
+    "static",
+    "struct",
+    "super",
+    "trait",
+    "true",
+    "try",
+    "type",
+    "typeof",
+    "union",
+    "unsafe",
+    "unsized",
+    "use",
+    "virtual",
+    "where",
+    "while",
+    "yield",
+];
+
 fn parse_delimiter(arg: &str) -> Result<u8> {
     let c: char = arg.parse().map_err(CantParseDelimiter)?;
     Ok(TryInto::<u8>::try_into(c).map_err(CantCastDelimiter)?)
@@ -139,9 +196,7 @@ impl TypeParser {
 
 #[derive(Clone, Debug)]
 struct Header {
-    #[allow(dead_code)]
     name: String,
-    #[allow(dead_code)]
     raw_name: String,
     valid_parsers: Vec<TypeParser>,
     optional: bool,
@@ -150,8 +205,19 @@ struct Header {
 
 impl From<&str> for Header {
     fn from(field: &str) -> Self {
+        // Handle punctuation, and convert to snake_case.
+        let mut name = field
+            .replace(|c: char| c.is_ascii_punctuation(), "_")
+            .trim_start_matches('_')
+            .to_case(Case::Snake);
+
+        // Check for reserved words.
+        if RESERVED_KEYWORDS.binary_search(&name.as_str()).is_ok() {
+            name = format!("r#{}", name);
+        }
+
         Header {
-            name: field.to_case(Case::Snake),
+            name,
             raw_name: field.to_string(),
             valid_parsers: TypeParser::get_all(),
             optional: false,
