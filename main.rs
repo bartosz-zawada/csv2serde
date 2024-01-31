@@ -250,7 +250,7 @@ impl Header {
             .unwrap_or("String");
 
         if self.optional {
-            format!("Option({})", type_name)
+            format!("Option<{}>", type_name)
         } else {
             type_name.to_owned()
         }
