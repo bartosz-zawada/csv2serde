@@ -1,6 +1,6 @@
 [package]
 name = "csv2serde"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -10,4 +10,8 @@ clap = { version = "4.3.19", features = ["derive"] }
 convert_case = "0.6.0"
 csv = "1.2.2"
 phf = { version = "0.11.2", features = ["macros"] }
+prettyplease = "0.2.16"
+proc-macro2 = "1.0.78"
+quote = "1.0.35"
+syn = "2.0.48"
 thiserror = "1.0.44"

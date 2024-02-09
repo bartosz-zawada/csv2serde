@@ -1,7 +1,8 @@
 use clap::{builder::ArgPredicate, Parser};
 use convert_case::{self, Case, Casing};
 use csv::{self, Trim};
-use std::{fmt::Write, path::PathBuf};
+use quote::{format_ident, quote};
+use std::path::PathBuf;
 use thiserror;
 
 mod keywords;
@@ -18,7 +19,7 @@ enum Error {
     CantParseRecord(#[source] csv::Error),
 
     #[error("Could not generate code: {0}")]
-    CantGenerateCode(#[source] std::fmt::Error),
+    CantGenerateCode(#[source] syn::Error),
 }
 use Error::*;
 
@@ -187,40 +188,35 @@ impl Header {
     }
 }
 
-fn generate_code_impl(
-    code: &mut String,
-    struct_name: &str,
-    headers: Vec<Header>,
-) -> std::fmt::Result {
-    writeln!(code, "#[derive(Debug, Deserialize)]")?;
-    writeln!(code, "struct {} {{", struct_name)?;
-
-    let mut first_written = false;
-    for h in headers {
-        if first_written {
-            writeln!(code)?;
-        }
-
-        if h.name != h.raw_name {
-            writeln!(code, "    #[serde(rename = \"{}\")]", h.raw_name)?;
-        }
-
-        writeln!(code, "    {}: {},", h.name, h.get_type_name())?;
-
-        first_written = true;
-    }
-
-    writeln!(code, "}}")?;
-
-    Ok(())
-}
-
 fn generate_code(struct_name: &str, headers: Vec<Header>) -> Result<String> {
-    let mut code = String::new();
+    let struct_name = format_ident!("{}", struct_name);
 
-    generate_code_impl(&mut code, struct_name, headers).map_err(CantGenerateCode)?;
+    let headers = headers.iter().map(|h| {
+        let header_name = format_ident!("{}", &h.name);
+        let type_name = syn::Type::Verbatim(h.get_type_name().parse().unwrap());
 
-    Ok(code)
+        let maybe_rename = if h.name != h.raw_name {
+            let raw_name = &h.raw_name;
+            quote! {#[serde(rename = #raw_name)]}
+        } else {
+            quote! {}
+        };
+
+        quote! {
+            #maybe_rename
+            #header_name: #type_name,
+        }
+    });
+
+    let full = quote! {
+        #[derive(Debug, Deserialize)]
+        struct #struct_name {
+            #(#headers)*
+        }
+    };
+
+    let syntax_tree = syn::parse2(full).map_err(CantGenerateCode)?;
+    Ok(prettyplease::unparse(&syntax_tree))
 }
 
 fn main() -> Result<()> {
