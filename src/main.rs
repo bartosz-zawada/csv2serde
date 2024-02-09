@@ -21,7 +21,6 @@ enum Error {
     #[error("Could not generate code: {0}")]
     CantGenerateCode(#[source] syn::Error),
 }
-use Error::*;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
@@ -213,7 +212,7 @@ fn generate_code(struct_name: &str, headers: Vec<Header>) -> Result<String, Erro
         }
     };
 
-    let syntax_tree = syn::parse2(full).map_err(CantGenerateCode)?;
+    let syntax_tree = syn::parse2(full).map_err(Error::CantGenerateCode)?;
     Ok(prettyplease::unparse(&syntax_tree))
 }
 
@@ -227,11 +226,11 @@ fn main() -> Result<(), Error> {
         .delimiter(args.delimiter as u8)
         .trim(Trim::All)
         .from_path(&path)
-        .map_err(|e| CantOpenReader(e, path_str))?;
+        .map_err(|e| Error::CantOpenReader(e, path_str))?;
 
     let mut headers: Vec<Header> = reader
         .headers()
-        .map_err(CantParseHeaders)?
+        .map_err(Error::CantParseHeaders)?
         .iter()
         .map(Header::from)
         .collect();
@@ -239,7 +238,7 @@ fn main() -> Result<(), Error> {
     let lines = args.lines.unwrap_or(usize::MAX);
 
     for record in reader.records().take(lines) {
-        let record = record.map_err(CantParseRecord)?;
+        let record = record.map_err(Error::CantParseRecord)?;
 
         for (i, field) in record.iter().enumerate() {
             headers.get_mut(i).unwrap().update_for(field);
