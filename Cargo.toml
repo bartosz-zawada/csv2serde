@@ -10,7 +10,3 @@ clap = { version = "4.3.19", features = ["derive"] }
 convert_case = "0.6.0"
 csv = "1.2.2"
 thiserror = "1.0.44"
-
-[[bin]]
-name = "csv2serde"
-path = "main.rs"
