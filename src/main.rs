@@ -3,8 +3,6 @@ use convert_case::{self, Case, Casing};
 use csv::{self, Trim};
 use std::path::PathBuf;
 
-use csv2serde::Error;
-
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
 pub struct Args {
@@ -32,17 +30,16 @@ pub struct Args {
     lines: Option<usize>,
 }
 
-fn main() -> Result<(), Error> {
+fn main() {
     let args = Args::parse();
 
     let path = args.file;
-    let path_str = path.to_string_lossy().to_string();
 
     let reader = csv::ReaderBuilder::new()
         .delimiter(args.delimiter as u8)
         .trim(Trim::All)
         .from_path(&path)
-        .map_err(|e| Error::CantOpenReader(e, path_str))?;
+        .expect("Could not open reader.");
 
     let lines = args.lines.unwrap_or(usize::MAX);
     let struct_name = args
@@ -53,6 +50,4 @@ fn main() -> Result<(), Error> {
     let code = csv2serde::run(reader, lines, &struct_name).unwrap();
 
     println!("{}", code);
-
-    Ok(())
 }
