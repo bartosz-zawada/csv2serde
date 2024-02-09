@@ -23,8 +23,6 @@ enum Error {
 }
 use Error::*;
 
-type Result<T> = std::result::Result<T, Error>;
-
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
 pub struct Args {
@@ -188,7 +186,7 @@ impl Header {
     }
 }
 
-fn generate_code(struct_name: &str, headers: Vec<Header>) -> Result<String> {
+fn generate_code(struct_name: &str, headers: Vec<Header>) -> Result<String, Error> {
     let struct_name = format_ident!("{}", struct_name);
 
     let headers = headers.iter().map(|h| {
@@ -219,7 +217,7 @@ fn generate_code(struct_name: &str, headers: Vec<Header>) -> Result<String> {
     Ok(prettyplease::unparse(&syntax_tree))
 }
 
-fn main() -> Result<()> {
+fn main() -> Result<(), Error> {
     let args = Args::parse();
 
     let path = args.file;
