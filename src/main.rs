@@ -8,6 +8,8 @@ use std::{
 };
 use thiserror;
 
+mod keywords;
+
 #[derive(thiserror::Error, Debug)]
 enum Error {
     #[error("Could not create Reader for path {1}")]
@@ -58,63 +60,6 @@ pub struct Args {
     #[arg(short = 'l', long)]
     lines: Option<usize>,
 }
-
-const RESERVED_KEYWORDS: &[&str] = &[
-    "'static",
-    "abstract",
-    "as",
-    "async",
-    "await",
-    "become",
-    "box",
-    "break",
-    "const",
-    "continue",
-    "crate",
-    "do",
-    "dyn",
-    "else",
-    "enum",
-    "extern",
-    "false",
-    "final",
-    "fn",
-    "for",
-    "if",
-    "impl",
-    "in",
-    "let",
-    "loop",
-    "macro",
-    "macro_rules",
-    "match",
-    "mod",
-    "move",
-    "mut",
-    "override",
-    "priv",
-    "pub",
-    "ref",
-    "return",
-    "self",
-    "Self",
-    "static",
-    "struct",
-    "super",
-    "trait",
-    "true",
-    "try",
-    "type",
-    "typeof",
-    "union",
-    "unsafe",
-    "unsized",
-    "use",
-    "virtual",
-    "where",
-    "while",
-    "yield",
-];
 
 fn parse_delimiter(arg: &str) -> Result<u8> {
     let c: char = arg.parse().map_err(CantParseDelimiter)?;
@@ -212,7 +157,7 @@ impl From<&str> for Header {
             .to_case(Case::Snake);
 
         // Check for reserved words.
-        if RESERVED_KEYWORDS.binary_search(&name.as_str()).is_ok() {
+        if keywords::check(&name) {
             name = format!("r#{}", name);
         }
 
