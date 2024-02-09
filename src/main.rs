@@ -1,11 +1,7 @@
 use clap::{builder::ArgPredicate, Parser};
 use convert_case::{self, Case, Casing};
 use csv::{self, Trim};
-use std::{
-    char::{ParseCharError, TryFromCharError},
-    fmt::Write,
-    path::PathBuf,
-};
+use std::{fmt::Write, path::PathBuf};
 use thiserror;
 
 mod keywords;
@@ -14,12 +10,6 @@ mod keywords;
 enum Error {
     #[error("Could not create Reader for path {1}")]
     CantOpenReader(#[source] csv::Error, String),
-
-    #[error("Could not parse delimiter")]
-    CantParseDelimiter(#[source] ParseCharError),
-
-    #[error("Could not cast delimiter to u8: {0}")]
-    CantCastDelimiter(#[source] TryFromCharError),
 
     #[error("Could not parse headers: {0}")]
     CantParseHeaders(#[source] csv::Error),
@@ -53,17 +43,12 @@ pub struct Args {
     force: bool,
 
     /// Character or string used as delimiter.
-    #[arg(short = 'd', long, default_value_t = b',', value_parser = parse_delimiter)]
-    delimiter: u8,
+    #[arg(short = 'd', long, default_value_t = ',')]
+    delimiter: char,
 
     /// Number of rows to analyze for field type prediction.
     #[arg(short = 'l', long)]
     lines: Option<usize>,
-}
-
-fn parse_delimiter(arg: &str) -> Result<u8> {
-    let c: char = arg.parse().map_err(CantParseDelimiter)?;
-    Ok(TryInto::<u8>::try_into(c).map_err(CantCastDelimiter)?)
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -245,7 +230,7 @@ fn main() -> Result<()> {
     let path_str = path.to_string_lossy().to_string();
 
     let mut reader = csv::ReaderBuilder::new()
-        .delimiter(args.delimiter)
+        .delimiter(args.delimiter as u8)
         .trim(Trim::All)
         .from_path(&path)
         .map_err(|e| CantOpenReader(e, path_str))?;
