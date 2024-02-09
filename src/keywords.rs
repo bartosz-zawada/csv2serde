@@ -1,4 +1,6 @@
-const RESERVED_KEYWORDS: &[&str] = &[
+use phf::phf_set;
+
+const RESERVED_KEYWORDS: phf::Set<&'static str> = phf_set! {
     "'static",
     "abstract",
     "as",
@@ -53,8 +55,8 @@ const RESERVED_KEYWORDS: &[&str] = &[
     "where",
     "while",
     "yield",
-];
+};
 
 pub fn check(word: &str) -> bool {
-    RESERVED_KEYWORDS.binary_search(&word).is_ok()
+    RESERVED_KEYWORDS.contains(&word)
 }
