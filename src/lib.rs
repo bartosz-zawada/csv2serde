@@ -124,7 +124,7 @@ impl Header {
 
     fn get_type_name(&self) -> String {
         if self.is_empty {
-            return "()".to_owned();
+            return String::from("Option<()>");
         }
 
         let all_parsers = TypeParser::get_all();
