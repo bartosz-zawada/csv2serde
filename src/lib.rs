@@ -194,5 +194,5 @@ pub fn run(
         }
     }
 
-    Ok(generate_code(struct_name, headers)?)
+    generate_code(struct_name, headers)
 }

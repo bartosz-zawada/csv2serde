@@ -58,5 +58,5 @@ const RESERVED_KEYWORDS: phf::Set<&'static str> = phf_set! {
 };
 
 pub fn check(word: &str) -> bool {
-    RESERVED_KEYWORDS.contains(&word)
+    RESERVED_KEYWORDS.contains(word)
 }
