@@ -29,6 +29,11 @@ pub struct Args {
     /// Number of rows to analyze for field type prediction.
     #[arg(short = 'l', long)]
     lines: Option<usize>,
+
+    /// Skips lines with a number of fields less or equal to this number.
+    /// Useful when you want to omit subsection headers.
+    #[arg(short = 's', long)]
+    min_fields: Option<usize>,
 }
 
 fn main() {
@@ -49,6 +54,7 @@ fn main() {
 
     let config = Config {
         lines: args.lines.unwrap_or(usize::MAX),
+        min_fields: args.min_fields,
         struct_name,
     };
 
