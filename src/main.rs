@@ -2,7 +2,7 @@ use clap::{builder::ArgPredicate, Parser};
 use convert_case::{self, Case, Casing};
 use csv::{self, Trim};
 use csv2serde::Config;
-use std::path::PathBuf;
+use std::{fs::File, io::Write, path::PathBuf};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
@@ -60,5 +60,16 @@ fn main() {
 
     let code = csv2serde::run(reader, &config).unwrap();
 
-    println!("{}", code);
+    if let Some(path) = args.output {
+        File::options()
+            .read(false)
+            .write(true)
+            .create_new(!args.force)
+            .open(path)
+            .unwrap()
+            .write_all(code.as_bytes())
+            .unwrap();
+    } else {
+        println!("{}", code);
+    };
 }
