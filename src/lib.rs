@@ -174,11 +174,12 @@ fn generate_code(struct_name: &str, headers: Vec<Header>) -> Result<String, Erro
     Ok(prettyplease::unparse(&syntax_tree))
 }
 
-pub fn run(
-    mut reader: csv::Reader<File>,
-    lines: usize,
-    struct_name: &str,
-) -> Result<String, Error> {
+pub struct Config {
+    pub lines: usize,
+    pub struct_name: String,
+}
+
+pub fn run(mut reader: csv::Reader<File>, config: &Config) -> Result<String, Error> {
     let mut headers: Vec<Header> = reader
         .headers()
         .map_err(Error::CantParseHeaders)?
@@ -186,7 +187,7 @@ pub fn run(
         .map(Header::from)
         .collect();
 
-    for record in reader.records().take(lines) {
+    for record in reader.records().take(config.lines) {
         let record = record.map_err(Error::CantParseRecord)?;
 
         for (i, field) in record.iter().enumerate() {
@@ -194,5 +195,5 @@ pub fn run(
         }
     }
 
-    generate_code(struct_name, headers)
+    generate_code(config.struct_name.as_str(), headers)
 }

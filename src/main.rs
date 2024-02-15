@@ -1,6 +1,7 @@
 use clap::{builder::ArgPredicate, Parser};
 use convert_case::{self, Case, Casing};
 use csv::{self, Trim};
+use csv2serde::Config;
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -41,13 +42,17 @@ fn main() {
         .from_path(&path)
         .expect("Could not open reader.");
 
-    let lines = args.lines.unwrap_or(usize::MAX);
     let struct_name = args
         .name
         .unwrap_or_else(|| path.file_stem().unwrap().to_string_lossy().to_string())
         .to_case(Case::Pascal);
 
-    let code = csv2serde::run(reader, lines, &struct_name).unwrap();
+    let config = Config {
+        lines: args.lines.unwrap_or(usize::MAX),
+        struct_name,
+    };
+
+    let code = csv2serde::run(reader, &config).unwrap();
 
     println!("{}", code);
 }
