@@ -46,7 +46,7 @@ impl TypeParser {
         "Option<String>",
     ];
 
-    fn get_all() -> Vec<Self> {
+    fn all() -> Vec<Self> {
         vec![
             TypeParser::U8,
             TypeParser::U16,
@@ -120,7 +120,7 @@ impl From<&str> for Header {
         Header {
             name,
             raw_name: field.to_string(),
-            valid_parsers: TypeParser::get_all(),
+            valid_parsers: TypeParser::all(),
             optional: false,
             is_empty: true,
         }
@@ -137,12 +137,12 @@ impl Header {
         }
     }
 
-    fn get_type_name(&self) -> &'static str {
+    fn type_name(&self) -> &'static str {
         if self.is_empty {
             return "Option<()>";
         }
 
-        TypeParser::get_all()
+        TypeParser::all()
             .into_iter()
             .find(|p| self.valid_parsers.contains(p))
             .unwrap_or(TypeParser::String)
@@ -155,7 +155,7 @@ fn generate_code(struct_name: &str, headers: Vec<Header>) -> Result<String, Erro
 
     let headers = headers.iter().map(|h| {
         let header_name = format_ident!("{}", &h.name);
-        let type_name = syn::Type::Verbatim(h.get_type_name().parse().unwrap());
+        let type_name = syn::Type::Verbatim(h.type_name().parse().unwrap());
 
         let maybe_rename = if h.name != h.raw_name {
             let raw_name = &h.raw_name;
@@ -219,7 +219,7 @@ mod tests {
 
     #[test]
     fn test_names() {
-        let parsers = TypeParser::get_all();
+        let parsers = TypeParser::all();
         let results: Vec<(&str, &str)> = parsers
             .iter()
             .map(|p| (p.type_name(false), p.type_name(true)))
