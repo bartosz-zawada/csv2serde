@@ -1,10 +1,15 @@
-pub fn add_blank_lines(code: &str, blank_lines: usize) -> String {
+pub fn add_blank_lines<S: Into<String> + AsRef<str>>(code: S, blank_lines: usize) -> String {
+    if blank_lines == 0 {
+        return code.into();
+    }
+
     let replacement_separator = "\n".repeat(blank_lines);
 
     let mut parts = vec![];
 
     // Let's skip straight for the struct block.
     let (first, rest) = code
+        .as_ref()
         .split_once('{')
         .expect("There must be struct block opening braces.");
     parts.push(first);

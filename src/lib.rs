@@ -13,7 +13,7 @@ pub struct Config {
     pub lines: usize,
     pub min_fields: Option<usize>,
     pub struct_name: String,
-    pub blank_lines: Option<usize>,
+    pub blank_lines: usize,
 }
 
 pub fn run<T: Read>(mut reader: csv::Reader<T>, config: &Config) -> Result<String, Error> {

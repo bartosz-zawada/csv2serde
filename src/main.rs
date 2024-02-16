@@ -47,8 +47,8 @@ pub struct CLI {
     min_fields: Option<usize>,
 
     /// Add blank lines between struct fields.
-    #[arg(short = 'b', long, default_value = "1")]
-    blank_lines: Option<usize>,
+    #[arg(short = 'b', long, default_value_t = 1)]
+    blank_lines: usize,
 }
 
 impl From<&CLI> for Config {

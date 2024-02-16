@@ -33,8 +33,5 @@ pub fn generate(config: &Config, fields: Vec<Field>) -> Result<String, Error> {
     let syntax_tree = syn::parse2(full).map_err(Error::CantGenerateCode)?;
     let result = prettyplease::unparse(&syntax_tree);
 
-    match config.blank_lines {
-        Some(n) if n > 0 => Ok(styling::add_blank_lines(&result, n)),
-        _ => Ok(result),
-    }
+    Ok(styling::add_blank_lines(result, config.blank_lines))
 }
