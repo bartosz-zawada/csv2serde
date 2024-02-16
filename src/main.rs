@@ -1,17 +1,22 @@
 use clap::{builder::ArgPredicate, Parser};
-use convert_case::{self, Case, Casing};
+use convert_case::{Case, Casing};
 use csv::{self, Trim};
 use csv2serde::Config;
-use std::{fs::File, io::Write, path::PathBuf};
+use std::{
+    fs::File,
+    io::{self, Write},
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
 pub struct Args {
     /// File for which types will be generated.
     /// If not provided, output will be sent to stdout.
-    file: PathBuf,
+    file: Option<PathBuf>,
 
     /// Name of the type, defaults to filename.
+    #[arg(short = 'n', long)]
     name: Option<String>,
 
     /// File into which the types will be written.
@@ -40,21 +45,53 @@ pub struct Args {
     blank_lines: Option<usize>,
 }
 
+enum ReaderSource {
+    File(File),
+    Stdin,
+}
+
+impl io::Read for ReaderSource {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        // No need to buffer manually; csv::Reader buffers for us.
+        match self {
+            ReaderSource::Stdin => io::stdin().read(buf),
+            ReaderSource::File(f) => f.read(buf),
+        }
+    }
+}
+
+fn get_name_from_path<P: AsRef<Path>>(path: P) -> String {
+    let stem = path.as_ref().file_stem();
+    let stem = stem.unwrap_or_else(|| {
+        panic!(
+            "Could not parse name from path '{}'",
+            path.as_ref().display(),
+        );
+    });
+
+    stem.to_string_lossy().to_string()
+}
+
 fn main() {
     let args = Args::parse();
 
-    let path = args.file;
+    let (reader, struct_name) = if let Some(path) = args.file {
+        let file = File::open(&path).expect("Should be able to read the input file.");
+        let struct_name = args.name.unwrap_or_else(|| get_name_from_path(path));
+
+        (ReaderSource::File(file), struct_name)
+    } else {
+        let struct_name = args.name.expect("Name required when reading from STDIN.");
+
+        (ReaderSource::Stdin, struct_name)
+    };
+
+    let struct_name = struct_name.to_case(Case::Pascal);
 
     let reader = csv::ReaderBuilder::new()
         .delimiter(args.delimiter as u8)
         .trim(Trim::All)
-        .from_path(&path)
-        .expect("Could not open reader.");
-
-    let struct_name = args
-        .name
-        .unwrap_or_else(|| path.file_stem().unwrap().to_string_lossy().to_string())
-        .to_case(Case::Pascal);
+        .from_reader(reader);
 
     let config = Config {
         lines: args.lines.unwrap_or(usize::MAX),
