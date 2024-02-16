@@ -96,7 +96,7 @@ impl TypeParser {
 }
 
 #[derive(Clone, Debug)]
-struct Header {
+struct Field {
     name: String,
     raw_name: String,
     valid_parsers: Vec<TypeParser>,
@@ -104,7 +104,7 @@ struct Header {
     is_empty: bool,
 }
 
-impl From<&str> for Header {
+impl From<&str> for Field {
     fn from(field: &str) -> Self {
         // Handle punctuation, and convert to snake_case.
         let mut name = field
@@ -117,7 +117,7 @@ impl From<&str> for Header {
             name = format!("r#{}", name);
         }
 
-        Header {
+        Field {
             name,
             raw_name: field.to_string(),
             valid_parsers: TypeParser::all(),
@@ -127,7 +127,7 @@ impl From<&str> for Header {
     }
 }
 
-impl Header {
+impl Field {
     fn update_for(&mut self, field: &str) {
         if field.is_empty() {
             self.optional = true;
@@ -150,19 +150,15 @@ impl Header {
     }
 }
 
-fn generate_code(
-    struct_name: &str,
-    headers: Vec<Header>,
-    config: &Config,
-) -> Result<String, Error> {
+fn generate_code(struct_name: &str, fields: Vec<Field>, config: &Config) -> Result<String, Error> {
     let struct_name = format_ident!("{}", struct_name);
 
-    let headers = headers.iter().map(|h| {
-        let header_name = format_ident!("{}", &h.name);
-        let type_name = syn::Type::Verbatim(h.type_name().parse().unwrap());
+    let fields = fields.iter().map(|f| {
+        let field_name = format_ident!("{}", &f.name);
+        let type_name = syn::Type::Verbatim(f.type_name().parse().unwrap());
 
-        let maybe_rename = if h.name != h.raw_name {
-            let raw_name = &h.raw_name;
+        let maybe_rename = if f.name != f.raw_name {
+            let raw_name = &f.raw_name;
             quote! {#[serde(rename = #raw_name)]}
         } else {
             quote! {}
@@ -170,14 +166,14 @@ fn generate_code(
 
         quote! {
             #maybe_rename
-            pub #header_name: #type_name,
+            pub #field_name: #type_name,
         }
     });
 
     let full = quote! {
         #[derive(Debug, Deserialize)]
         pub struct #struct_name {
-            #(#headers)*
+            #(#fields)*
         }
     };
 
@@ -232,11 +228,11 @@ pub struct Config {
 }
 
 pub fn run(mut reader: csv::Reader<File>, config: &Config) -> Result<String, Error> {
-    let mut headers: Vec<Header> = reader
+    let mut fields: Vec<Field> = reader
         .headers()
-        .map_err(Error::CantParseHeaders)?
+        .map_err(Error::CantParseFieldHeaders)?
         .iter()
-        .map(Header::from)
+        .map(Field::from)
         .collect();
 
     for record in reader.records().take(config.lines) {
@@ -250,11 +246,11 @@ pub fn run(mut reader: csv::Reader<File>, config: &Config) -> Result<String, Err
         }
 
         for (i, field) in record.iter().enumerate() {
-            headers.get_mut(i).unwrap().update_for(field);
+            fields.get_mut(i).unwrap().update_for(field);
         }
     }
 
-    generate_code(config.struct_name.as_str(), headers, config)
+    generate_code(config.struct_name.as_str(), fields, config)
 }
 
 #[cfg(test)]

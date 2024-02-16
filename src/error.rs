@@ -1,7 +1,7 @@
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Could not parse headers: {0}")]
-    CantParseHeaders(#[source] csv::Error),
+    CantParseFieldHeaders(#[source] csv::Error),
 
     #[error("Could not parse record: {0}")]
     CantParseRecord(#[source] csv::Error),
