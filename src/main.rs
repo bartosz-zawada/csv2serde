@@ -8,7 +8,6 @@ use convert_case::{Case, Casing};
 use csv::{self, Trim};
 use csv2serde::Config;
 use std::{
-    fs::File,
     io::Write,
     path::{Path, PathBuf},
 };
@@ -73,17 +72,11 @@ fn main() {
         _ => unreachable!("Name should be required when no path provided."),
     };
 
-    let reader = if let Some(ref path) = cli.file {
-        let file = File::open(path).expect("Should be able to read the input file.");
-        ReaderSource::File(file)
-    } else {
-        ReaderSource::Stdin
-    };
-
+    let source = ReaderSource::from(&cli);
     let reader = csv::ReaderBuilder::new()
         .delimiter(cli.delimiter as u8)
         .trim(Trim::All)
-        .from_reader(reader);
+        .from_reader(source);
 
     let config = Config {
         lines: cli.lines.unwrap_or(usize::MAX),
@@ -94,7 +87,7 @@ fn main() {
 
     let code = csv2serde::run(reader, &config).unwrap();
 
-    let mut output = WriteDestination::from(cli);
-    output.write_all(code.as_bytes()).unwrap();
-    output.flush().unwrap();
+    let mut destination = WriteDestination::from(cli);
+    destination.write_all(code.as_bytes()).unwrap();
+    destination.flush().unwrap();
 }
