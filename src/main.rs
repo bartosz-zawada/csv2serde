@@ -1,3 +1,7 @@
+mod main {
+    pub mod reader_source;
+}
+
 use clap::{builder::ArgPredicate, Parser};
 use convert_case::{Case, Casing};
 use csv::{self, Trim};
@@ -7,6 +11,8 @@ use std::{
     io::{self, Write},
     path::{Path, PathBuf},
 };
+
+use main::reader_source::ReaderSource;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
@@ -43,21 +49,6 @@ pub struct CLI {
     /// Add blank lines between struct fields.
     #[arg(short = 'b', long, default_value = "1")]
     blank_lines: Option<usize>,
-}
-
-enum ReaderSource {
-    File(File),
-    Stdin,
-}
-
-impl io::Read for ReaderSource {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        // No need to buffer manually; csv::Reader buffers for us.
-        match self {
-            ReaderSource::Stdin => io::stdin().read(buf),
-            ReaderSource::File(f) => f.read(buf),
-        }
-    }
 }
 
 enum WriteDestination {
