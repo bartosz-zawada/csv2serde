@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::io::Read;
 
 pub use error::Error;
 use field::Field;
@@ -16,7 +16,7 @@ pub struct Config {
     pub blank_lines: Option<usize>,
 }
 
-pub fn run(mut reader: csv::Reader<File>, config: &Config) -> Result<String, Error> {
+pub fn run<T: Read>(mut reader: csv::Reader<T>, config: &Config) -> Result<String, Error> {
     let mut fields: Vec<Field> = reader
         .headers()
         .map_err(Error::CantParseFieldHeaders)?
