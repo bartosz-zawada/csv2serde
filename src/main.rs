@@ -22,7 +22,7 @@ pub struct CLI {
     file: Option<PathBuf>,
 
     /// Name of the type, defaults to filename.
-    #[arg(short = 'n', long)]
+    #[arg(short = 'n', long, required_unless_present("file"))]
     name: Option<String>,
 
     /// File into which the types will be written.
