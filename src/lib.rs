@@ -166,13 +166,13 @@ fn generate_code(struct_name: &str, headers: Vec<Header>) -> Result<String, Erro
 
         quote! {
             #maybe_rename
-            #header_name: #type_name,
+            pub #header_name: #type_name,
         }
     });
 
     let full = quote! {
         #[derive(Debug, Deserialize)]
-        struct #struct_name {
+        pub struct #struct_name {
             #(#headers)*
         }
     };
