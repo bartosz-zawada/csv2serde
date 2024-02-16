@@ -1,68 +1,13 @@
 use std::fs::File;
 
-use convert_case::{self, Case, Casing};
 pub use error::Error;
+use field::Field;
 use quote::{format_ident, quote};
-use type_parser::TypeParser;
 
 mod error;
+mod field;
 mod keywords;
 mod type_parser;
-
-#[derive(Clone, Debug)]
-struct Field {
-    name: String,
-    raw_name: String,
-    valid_parsers: Vec<TypeParser>,
-    optional: bool,
-    is_empty: bool,
-}
-
-impl From<&str> for Field {
-    fn from(field: &str) -> Self {
-        // Handle punctuation, and convert to snake_case.
-        let mut name = field
-            .replace(|c: char| c.is_ascii_punctuation(), "_")
-            .trim_start_matches('_')
-            .to_case(Case::Snake);
-
-        // Check for reserved words.
-        if keywords::check(&name) {
-            name = format!("r#{}", name);
-        }
-
-        Field {
-            name,
-            raw_name: field.to_string(),
-            valid_parsers: TypeParser::all(),
-            optional: false,
-            is_empty: true,
-        }
-    }
-}
-
-impl Field {
-    fn update_for(&mut self, field: &str) {
-        if field.is_empty() {
-            self.optional = true;
-        } else {
-            self.valid_parsers.retain(|parser| parser.can_parse(field));
-            self.is_empty = false;
-        }
-    }
-
-    fn type_name(&self) -> &'static str {
-        if self.is_empty {
-            return "Option<()>";
-        }
-
-        TypeParser::all()
-            .into_iter()
-            .find(|p| self.valid_parsers.contains(p))
-            .unwrap_or(TypeParser::String)
-            .type_name(self.optional)
-    }
-}
 
 fn generate_code(struct_name: &str, fields: Vec<Field>, config: &Config) -> Result<String, Error> {
     let struct_name = format_ident!("{}", struct_name);
