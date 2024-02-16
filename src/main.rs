@@ -43,8 +43,8 @@ pub struct CLI {
 
     /// Skips lines with a number of fields less or equal to this number.
     /// Useful when you want to omit subsection headers.
-    #[arg(short = 's', long)]
-    min_fields: Option<usize>,
+    #[arg(short = 's', long, default_value_t = 0)]
+    min_fields: usize,
 
     /// Add blank lines between struct fields.
     #[arg(short = 'b', long, default_value_t = 1)]

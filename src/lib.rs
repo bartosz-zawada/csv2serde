@@ -11,7 +11,7 @@ mod type_parser;
 
 pub struct Config {
     pub lines: usize,
-    pub min_fields: Option<usize>,
+    pub min_fields: usize,
     pub struct_name: String,
     pub blank_lines: usize,
 }
@@ -27,9 +27,9 @@ pub fn run<T: Read>(mut reader: csv::Reader<T>, config: &Config) -> Result<Strin
     for record in reader.records().take(config.lines) {
         let record = record.map_err(Error::CantParseRecord)?;
 
-        if let Some(min_fields) = config.min_fields {
+        if config.min_fields > 0 {
             let len = record.iter().filter(|s| !s.is_empty()).count();
-            if len <= min_fields {
+            if len <= config.min_fields {
                 continue;
             }
         }
