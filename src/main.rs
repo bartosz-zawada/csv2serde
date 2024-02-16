@@ -10,7 +10,7 @@ use std::{
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
-pub struct Args {
+pub struct CLI {
     /// File for which types will be generated.
     /// If not provided, output will be sent to stdout.
     file: Option<PathBuf>,
@@ -81,9 +81,9 @@ impl io::Write for WriteDestination {
     }
 }
 
-impl From<Args> for WriteDestination {
-    fn from(args: Args) -> Self {
-        let output = args.output.as_ref();
+impl From<CLI> for WriteDestination {
+    fn from(cli: CLI) -> Self {
+        let output = cli.output.as_ref();
         match output.as_ref() {
             None => WriteDestination::Stdout,
 
@@ -91,7 +91,7 @@ impl From<Args> for WriteDestination {
                 let f = File::options()
                     .read(false)
                     .write(true)
-                    .create_new(!args.force)
+                    .create_new(!cli.force)
                     .truncate(true)
                     .open(path)
                     .expect("Should be able to write file");
@@ -115,15 +115,15 @@ fn get_name_from_path<P: AsRef<Path>>(path: P) -> String {
 }
 
 fn main() {
-    let args = Args::parse();
+    let cli = CLI::parse();
 
-    let struct_name = match (&args.name, &args.file) {
+    let struct_name = match (&cli.name, &cli.file) {
         (Some(name), _) => name.to_case(Case::Pascal),
         (None, Some(path)) => get_name_from_path(path).to_case(Case::Pascal),
         _ => unreachable!("Name should be required when no path provided."),
     };
 
-    let reader = if let Some(ref path) = args.file {
+    let reader = if let Some(ref path) = cli.file {
         let file = File::open(path).expect("Should be able to read the input file.");
         ReaderSource::File(file)
     } else {
@@ -131,20 +131,20 @@ fn main() {
     };
 
     let reader = csv::ReaderBuilder::new()
-        .delimiter(args.delimiter as u8)
+        .delimiter(cli.delimiter as u8)
         .trim(Trim::All)
         .from_reader(reader);
 
     let config = Config {
-        lines: args.lines.unwrap_or(usize::MAX),
-        min_fields: args.min_fields,
+        lines: cli.lines.unwrap_or(usize::MAX),
+        min_fields: cli.min_fields,
         struct_name,
-        blank_lines: args.blank_lines,
+        blank_lines: cli.blank_lines,
     };
 
     let code = csv2serde::run(reader, &config).unwrap();
 
-    let mut output = WriteDestination::from(args);
+    let mut output = WriteDestination::from(cli);
     output.write_all(code.as_bytes()).unwrap();
     output.flush().unwrap();
 }
