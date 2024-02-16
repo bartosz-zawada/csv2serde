@@ -3,8 +3,8 @@ mod styling;
 use crate::{field::Field, Config, Error};
 use quote::{format_ident, quote};
 
-pub fn generate(struct_name: &str, fields: Vec<Field>, config: &Config) -> Result<String, Error> {
-    let struct_name = format_ident!("{}", struct_name);
+pub fn generate(config: &Config, fields: Vec<Field>) -> Result<String, Error> {
+    let struct_name = format_ident!("{}", config.struct_name);
 
     let fields = fields.iter().map(|f| {
         let field_name = format_ident!("{}", &f.name);

@@ -39,5 +39,5 @@ pub fn run<T: Read>(mut reader: csv::Reader<T>, config: &Config) -> Result<Strin
         }
     }
 
-    codegen::generate(config.struct_name.as_str(), fields, config)
+    codegen::generate(config, fields)
 }
