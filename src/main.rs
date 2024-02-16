@@ -37,9 +37,9 @@ pub struct CLI {
     #[arg(short = 'd', long, default_value_t = ',')]
     delimiter: char,
 
-    /// Number of rows to analyze for field type prediction.
-    #[arg(short = 'l', long)]
-    lines: Option<usize>,
+    /// Number of rows to analyze for field type prediction. [default: ALL]
+    #[arg(short = 'l', long, default_value_t = usize::MAX, hide_default_value = true)]
+    lines: usize,
 
     /// Skips lines with a number of fields less or equal to this number.
     /// Useful when you want to omit subsection headers.
@@ -60,7 +60,7 @@ impl From<&CLI> for Config {
         };
 
         Config {
-            lines: cli.lines.unwrap_or(usize::MAX),
+            lines: cli.lines,
             min_fields: cli.min_fields,
             struct_name,
             blank_lines: cli.blank_lines,
