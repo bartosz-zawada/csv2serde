@@ -23,11 +23,13 @@ impl io::Write for WriteDestination {
     }
 }
 
-impl From<CLI> for WriteDestination {
-    fn from(cli: CLI) -> Self {
+impl TryFrom<&CLI> for WriteDestination {
+    type Error = io::Error;
+
+    fn try_from(cli: &CLI) -> Result<Self, Self::Error> {
         let output = cli.output.as_ref();
         match output.as_ref() {
-            None => WriteDestination::Stdout,
+            None => Ok(WriteDestination::Stdout),
 
             Some(path) => {
                 let f = File::options()
@@ -35,10 +37,9 @@ impl From<CLI> for WriteDestination {
                     .write(true)
                     .create_new(!cli.force)
                     .truncate(true)
-                    .open(path)
-                    .expect("Should be able to write file");
+                    .open(path)?;
 
-                WriteDestination::File(f)
+                Ok(WriteDestination::File(f))
             }
         }
     }

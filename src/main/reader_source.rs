@@ -17,13 +17,15 @@ impl io::Read for ReaderSource {
     }
 }
 
-impl From<&CLI> for ReaderSource {
-    fn from(cli: &CLI) -> Self {
+impl TryFrom<&CLI> for ReaderSource {
+    type Error = io::Error;
+
+    fn try_from(cli: &CLI) -> Result<Self, Self::Error> {
         if let Some(ref path) = cli.file {
-            let file = File::open(path).expect("Should be able to read the input file.");
-            ReaderSource::File(file)
+            let file = File::open(path)?;
+            Ok(ReaderSource::File(file))
         } else {
-            ReaderSource::Stdin
+            Ok(ReaderSource::Stdin)
         }
     }
 }

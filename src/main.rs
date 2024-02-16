@@ -83,7 +83,7 @@ fn get_name_from_path<P: AsRef<Path>>(path: P) -> String {
 fn main() {
     let cli = CLI::parse();
 
-    let source = ReaderSource::from(&cli);
+    let source = ReaderSource::try_from(&cli).expect("Failed to read input.");
     let reader = csv::ReaderBuilder::new()
         .delimiter(cli.delimiter as u8)
         .trim(Trim::All)
@@ -93,7 +93,8 @@ fn main() {
 
     let code = csv2serde::run(reader, &config).unwrap();
 
-    let mut destination = WriteDestination::from(cli);
+    let mut destination =
+        WriteDestination::try_from(&cli).expect("Failed to write to destination.");
     destination.write_all(code.as_bytes()).unwrap();
     destination.flush().unwrap();
 }
