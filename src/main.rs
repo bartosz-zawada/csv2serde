@@ -34,6 +34,10 @@ pub struct Args {
     /// Useful when you want to omit subsection headers.
     #[arg(short = 's', long)]
     min_fields: Option<usize>,
+
+    /// Add blank lines between struct fields.
+    #[arg(short = 'b', long, default_value = "1")]
+    blank_lines: Option<usize>,
 }
 
 fn main() {
@@ -56,6 +60,7 @@ fn main() {
         lines: args.lines.unwrap_or(usize::MAX),
         min_fields: args.min_fields,
         struct_name,
+        blank_lines: args.blank_lines,
     };
 
     let code = csv2serde::run(reader, &config).unwrap();
