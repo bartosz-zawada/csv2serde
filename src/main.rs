@@ -51,6 +51,23 @@ pub struct CLI {
     blank_lines: Option<usize>,
 }
 
+impl From<&CLI> for Config {
+    fn from(cli: &CLI) -> Self {
+        let struct_name = match (&cli.name, &cli.file) {
+            (Some(name), _) => name.to_case(Case::Pascal),
+            (None, Some(path)) => get_name_from_path(path).to_case(Case::Pascal),
+            _ => unreachable!("Name should be required when no path provided."),
+        };
+
+        Config {
+            lines: cli.lines.unwrap_or(usize::MAX),
+            min_fields: cli.min_fields,
+            struct_name,
+            blank_lines: cli.blank_lines,
+        }
+    }
+}
+
 fn get_name_from_path<P: AsRef<Path>>(path: P) -> String {
     let stem = path.as_ref().file_stem();
     let stem = stem.unwrap_or_else(|| {
@@ -66,24 +83,13 @@ fn get_name_from_path<P: AsRef<Path>>(path: P) -> String {
 fn main() {
     let cli = CLI::parse();
 
-    let struct_name = match (&cli.name, &cli.file) {
-        (Some(name), _) => name.to_case(Case::Pascal),
-        (None, Some(path)) => get_name_from_path(path).to_case(Case::Pascal),
-        _ => unreachable!("Name should be required when no path provided."),
-    };
-
     let source = ReaderSource::from(&cli);
     let reader = csv::ReaderBuilder::new()
         .delimiter(cli.delimiter as u8)
         .trim(Trim::All)
         .from_reader(source);
 
-    let config = Config {
-        lines: cli.lines.unwrap_or(usize::MAX),
-        min_fields: cli.min_fields,
-        struct_name,
-        blank_lines: cli.blank_lines,
-    };
+    let config = Config::from(&cli);
 
     let code = csv2serde::run(reader, &config).unwrap();
 
