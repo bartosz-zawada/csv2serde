@@ -7,24 +7,45 @@ use quote::{format_ident, quote};
 mod error;
 mod keywords;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum TypeParser {
-    I8,
-    I16,
-    I32,
-    I64,
-    I128,
     U8,
     U16,
     U32,
     U64,
     U128,
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
     F32,
     F64,
     String,
 }
 
 impl TypeParser {
+    const TYPE_NAMES: [&'static str; 13] = [
+        "u8", "u16", "u32", "u64", "u128", "i8", "i16", "i32", "i64", "i128", "f32", "f64",
+        "String",
+    ];
+
+    const OPTIONAL_TYPE_NAMES: [&'static str; 13] = [
+        "Option<u8>",
+        "Option<u16>",
+        "Option<u32>",
+        "Option<u64>",
+        "Option<u128>",
+        "Option<i8>",
+        "Option<i16>",
+        "Option<i32>",
+        "Option<i64>",
+        "Option<i128>",
+        "Option<f32>",
+        "Option<f64>",
+        "Option<String>",
+    ];
+
     fn get_all() -> Vec<Self> {
         vec![
             TypeParser::U8,
@@ -43,21 +64,15 @@ impl TypeParser {
         ]
     }
 
-    fn get_type_name(&self) -> &str {
-        match &self {
-            TypeParser::U8 => "u8",
-            TypeParser::U16 => "u16",
-            TypeParser::U32 => "u32",
-            TypeParser::U64 => "u64",
-            TypeParser::U128 => "u128",
-            TypeParser::I8 => "i8",
-            TypeParser::I16 => "i16",
-            TypeParser::I32 => "i32",
-            TypeParser::I64 => "i64",
-            TypeParser::I128 => "i128",
-            TypeParser::F32 => "f32",
-            TypeParser::F64 => "f64",
-            TypeParser::String => "String",
+    fn index(&self) -> usize {
+        *self as usize
+    }
+
+    fn type_name(&self, optional: bool) -> &'static str {
+        if optional {
+            TypeParser::OPTIONAL_TYPE_NAMES[self.index()]
+        } else {
+            TypeParser::TYPE_NAMES[self.index()]
         }
     }
 
@@ -122,24 +137,16 @@ impl Header {
         }
     }
 
-    fn get_type_name(&self) -> String {
+    fn get_type_name(&self) -> &'static str {
         if self.is_empty {
-            return String::from("Option<()>");
+            return "Option<()>";
         }
 
-        let all_parsers = TypeParser::get_all();
-
-        let type_name = all_parsers
-            .iter()
+        TypeParser::get_all()
+            .into_iter()
             .find(|p| self.valid_parsers.contains(p))
-            .map(|p| p.get_type_name())
-            .unwrap_or("String");
-
-        if self.optional {
-            format!("Option<{}>", type_name)
-        } else {
-            type_name.to_owned()
-        }
+            .unwrap_or(TypeParser::String)
+            .type_name(self.optional)
     }
 }
 
@@ -204,4 +211,37 @@ pub fn run(mut reader: csv::Reader<File>, config: &Config) -> Result<String, Err
     }
 
     generate_code(config.struct_name.as_str(), headers)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::TypeParser;
+
+    #[test]
+    fn test_names() {
+        let parsers = TypeParser::get_all();
+        let results: Vec<(&str, &str)> = parsers
+            .iter()
+            .map(|p| (p.type_name(false), p.type_name(true)))
+            .collect();
+
+        assert_eq!(
+            results,
+            vec![
+                ("u8", "Option<u8>"),
+                ("u16", "Option<u16>"),
+                ("u32", "Option<u32>"),
+                ("u64", "Option<u64>"),
+                ("u128", "Option<u128>"),
+                ("i8", "Option<i8>"),
+                ("i16", "Option<i16>"),
+                ("i32", "Option<i32>"),
+                ("i64", "Option<i64>"),
+                ("i128", "Option<i128>"),
+                ("f32", "Option<f32>"),
+                ("f64", "Option<f64>"),
+                ("String", "Option<String>"),
+            ]
+        );
+    }
 }
