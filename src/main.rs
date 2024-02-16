@@ -60,6 +60,48 @@ impl io::Read for ReaderSource {
     }
 }
 
+enum WriteDestination {
+    File(File),
+    Stdout,
+}
+
+impl io::Write for WriteDestination {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match self {
+            WriteDestination::File(f) => f.write(buf),
+            WriteDestination::Stdout => io::stdout().write(buf),
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match self {
+            WriteDestination::File(f) => f.flush(),
+            WriteDestination::Stdout => io::stdout().flush(),
+        }
+    }
+}
+
+impl From<Args> for WriteDestination {
+    fn from(args: Args) -> Self {
+        let output = args.output.as_ref();
+        match output.as_ref() {
+            None => WriteDestination::Stdout,
+
+            Some(path) => {
+                let f = File::options()
+                    .read(false)
+                    .write(true)
+                    .create_new(!args.force)
+                    .truncate(true)
+                    .open(path)
+                    .expect("Should be able to write file");
+
+                WriteDestination::File(f)
+            }
+        }
+    }
+}
+
 fn get_name_from_path<P: AsRef<Path>>(path: P) -> String {
     let stem = path.as_ref().file_stem();
     let stem = stem.unwrap_or_else(|| {
@@ -75,18 +117,18 @@ fn get_name_from_path<P: AsRef<Path>>(path: P) -> String {
 fn main() {
     let args = Args::parse();
 
-    let (reader, struct_name) = if let Some(path) = args.file {
-        let file = File::open(&path).expect("Should be able to read the input file.");
-        let struct_name = args.name.unwrap_or_else(|| get_name_from_path(path));
-
-        (ReaderSource::File(file), struct_name)
-    } else {
-        let struct_name = args.name.expect("Name required when reading from STDIN.");
-
-        (ReaderSource::Stdin, struct_name)
+    let struct_name = match (&args.name, &args.file) {
+        (Some(name), _) => name.to_case(Case::Pascal),
+        (None, Some(path)) => get_name_from_path(path).to_case(Case::Pascal),
+        _ => unreachable!("Name should be required when no path provided."),
     };
 
-    let struct_name = struct_name.to_case(Case::Pascal);
+    let reader = if let Some(ref path) = args.file {
+        let file = File::open(path).expect("Should be able to read the input file.");
+        ReaderSource::File(file)
+    } else {
+        ReaderSource::Stdin
+    };
 
     let reader = csv::ReaderBuilder::new()
         .delimiter(args.delimiter as u8)
@@ -102,16 +144,7 @@ fn main() {
 
     let code = csv2serde::run(reader, &config).unwrap();
 
-    if let Some(path) = args.output {
-        File::options()
-            .read(false)
-            .write(true)
-            .create_new(!args.force)
-            .open(path)
-            .unwrap()
-            .write_all(code.as_bytes())
-            .unwrap();
-    } else {
-        println!("{}", code);
-    };
+    let mut output = WriteDestination::from(args);
+    output.write_all(code.as_bytes()).unwrap();
+    output.flush().unwrap();
 }
